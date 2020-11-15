@@ -1,15 +1,23 @@
 import re
 import os
 import sys
+import operator
+import commands
+from commands import *
 
-DIALOGUE = re.compile(r'\\begin\{dialogue\}\{\\(?P<name>\w+)\/(\s\((?P<direction>.*)\))?\}\n\t?(?P<dialogue>.*)\n\\end\{dialogue\}')
+DIALOGUE = re.compile(r'\\begin\{dialogue\}\{\\(?P<actor>\w+)\/(\s\((?P<blocking>.*)\))?\}\n\t?(?P<line>.*)\n\\end\{dialogue\}')
 
 if __name__ == '__main__':
     fn_in = sys.argv[1]
     fn_out = sys.argv[2]
 
+    command_builders = []
+
     with open(fn_in, 'r') as file:
         data = file.read()
 
-        for line in re.finditer(DIALOGUE, data):
-            print(line.group("dialogue"))
+        for m in re.finditer(DIALOGUE, data):
+            command_builders.append(LineBuilder(m.start(), m.group("actor"), m.group("blocking"), m.group("line")))
+
+    sorted(command_builders, key=lambda x: x.cindex)
+    [print(x) for x in command_builders]
