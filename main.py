@@ -5,7 +5,7 @@ import operator
 import commands
 from commands import *
 
-SLUG = re.compile(r'\\(ex|in)tslug\[(?P<time>.*)\]\{(?P<location>.*)\}')
+SLUG = re.compile(r'\\(ex|in)tslug\[(?P<time>.*)\]\{(?P<location>.*)\}(\s+\% WITH (?P<transition>.*))?')
 
 ACTOR = re.compile(r"\\@ifdefinable\{\\(?P<alias>[\w\d]+)\}{\\def\\.+\/\{(?P<actor>.+)\}\}")
 DIALOGUE = re.compile(r'\\begin\{dialogue\}\{\\(?P<actor>\w+)\/(\s\((?P<blocking>.*)\))?\}\n\t?(?P<line>.*)\n\\end\{dialogue\}')
@@ -39,7 +39,7 @@ if __name__ == '__main__':
             command_builders.append(CodeBuilder(m.start(), "label start:"))
 
         for m in re.finditer(SLUG, data):
-            command_builders.append(SlugBuilder(m.start(), m.group("time"), m.group("location")))
+            command_builders.append(SlugBuilder(m.start(), m.group("time"), m.group("location"), m.group("transition")))
 
         for m in re.finditer(DIALOGUE, data):
             command_builders.append(LineBuilder(m.start(), m.group("actor"), m.group("blocking"), format_line(m.group("line"))))

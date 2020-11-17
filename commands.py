@@ -11,13 +11,14 @@ class CodeBuilder(CommandBuilder):
         return self.cmd
 
 class SlugBuilder(CommandBuilder):
-    def __init__(self, cindex, time, location):
+    def __init__(self, cindex, time, location, transition):
         super().__init__(cindex)
         self.time = time
         self.location = location
+        self.transition = transition
         
     def __str__(self):
-        return F"    scene bg {self.location}"
+        return F"    scene bg {self.location}\n    with {self.transition}"
 
 class ActorBuilder(CommandBuilder):
     def __init__(self, cindex, alias, actor):
