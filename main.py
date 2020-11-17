@@ -11,9 +11,12 @@ DIALOGUE = re.compile(r'\\begin\{dialogue\}\{\\(?P<actor>\w+)\/(\s\((?P<blocking
 FADE_IN = re.compile(r'\\fadein')
 FADE_OUT = re.compile(r'\\fadeout')
 
+STRIP_PAREN = re.compile(r'\\paren\{[^\}]+\}') # temp
+
 def format_line(s):
     s = re.sub("--", u"\u2014", s) # em dash
     s = re.sub(f"\"", "\\\"", s) # quotes
+    s = re.sub(STRIP_PAREN, '', s) # temp
     return s
 
 if __name__ == '__main__':
