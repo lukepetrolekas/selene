@@ -2,6 +2,14 @@ class CommandBuilder():
     def __init__(self, cindex):
         self.cindex = cindex
 
+class CodeBuilder(CommandBuilder):
+    def __init__(self, cindex, cmd):
+        super().__init__(cindex)
+        self.cmd = cmd
+        
+    def __str__(self):
+        return self.cmd
+
 class ActorBuilder(CommandBuilder):
     def __init__(self, cindex, alias, actor):
         super().__init__(cindex)
