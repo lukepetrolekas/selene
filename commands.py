@@ -18,7 +18,7 @@ class SlugBuilder(CommandBuilder):
         self.transition = transition
         
     def __str__(self):
-        return F"    scene bg {self.location}\n    with {self.transition}"
+        return F"    scene bg {self.location}" + (F"\n    with {self.transition}" if self.transition else "")
 
 class ActorBuilder(CommandBuilder):
     def __init__(self, cindex, alias, actor):
