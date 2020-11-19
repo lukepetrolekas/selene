@@ -27,7 +27,7 @@ class ActorBuilder(CommandBuilder):
         self.actor = actor
 
     def __str__(self):
-        return F"define {self.alias} = Character(\"{self.actor.upper()}\")\n"
+        return F"define {self.alias} = Character(\"{self.actor.upper()}\")"
 
 class LineBuilder(CommandBuilder):
     def __init__(self, cindex, actor, blocking, line):
