@@ -20,6 +20,7 @@ def format_line(s):
     s = re.sub(f"\"", "\\\"", s) # quotes
     s = re.sub(STRIP_PAREN, '', s) # temp
     s = re.sub("'", u"\u2019", s) # apostrophe to single quote
+    s = re.sub("\.\.\.", u"\u2026", s) # ellipsis
 
     # clean up accidental tabs in LaTeX
     s = s.strip()
