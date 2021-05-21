@@ -19,6 +19,10 @@ def format_line(s):
     s = re.sub("--", u"\u2014", s) # em dash
     s = re.sub(f"\"", "\\\"", s) # quotes
     s = re.sub(STRIP_PAREN, '', s) # temp
+    s = re.sub("'", u"\u2019", s) # apostrophe to single quote
+
+    # clean up accidental tabs in LaTeX
+    s = s.strip()
     return s
 
 if __name__ == '__main__':
