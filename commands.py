@@ -6,7 +6,11 @@ class DigiplayBuilder():
     def __init__(self, s):
         self.s = s
         self.actor_builders = ActorBuilder.extract(s)
-        self.command_builders = ["label digiplay:"] + LineBuilder.extract(s)
+        self.command_builders = LineBuilder.extract(s)
+        self.command_builders.extend(NarrationBuilder.extract(s))
+        self.command_builders.extend(BeatBuilder.extract(s))
+        self.command_builders.extend(SoundBuilder.extract(s))
+        self.command_builders.extend(BgBuilder.extract(s))
 
     def format(self, s):
         # very obvious optimization. If there is no \, there is nothing
@@ -23,7 +27,8 @@ class DigiplayBuilder():
         return "label characters:\n" + '\n'.join([str(x) for x in self.actor_builders])
 
     def __str__(self):
-        return '\n'.join([self.format(str(x)) for x in self.command_builders])
+        # need to sort by cindex
+        return '\n'.join([self.format(str(x)) for x in sorted(self.command_builders, key= lambda b: b.cindex)])
 
 class CommandBuilder():
     def __init__(self, cindex):
@@ -54,7 +59,7 @@ class ActorBuilder(CommandBuilder):
     def extract(s, offset=0):
         actors = []
 
-        for m in re.finditer(ActorBuilder._actor, s):
+        for m in re.finditer(ActorBuilder._actor,s):
             actors.append(ActorBuilder(offset + m.start(), m.group("alias"), m.group("actor"), "FFF"))
 
         return actors
@@ -69,15 +74,16 @@ class ActorBuilder(CommandBuilder):
         return F"    define {self.alias} = Character(\"{self.actor.upper()}\", color=\"#{self.colorHex}\")"
 
 class LineBuilder(CommandBuilder):
-    _regex = re.compile(r'\\begin{dialogue}{\\(?P<actor>\w+)/}\s*(\#(?P<expr>\w+))?\s*(\@(?P<block>\w+))?\n(?P<line>(.*|\n)+)\n\\end{dialogue}')
+    _regex = re.compile(r'\\begin\{dialogue\}\{\\(?P<actor>\w+)\/\}\n(\t+)(?P<line>.*)\n\\end\{dialogue\}')
     _italics = re.compile(r'\\emph\{([^\}]+)\}')
+    _parens = re.compile(r'\\paren\{([^\}]+)\}')
 
     @staticmethod
     def extract(s, offset=0):
         lines = []
 
         for m in re.finditer(LineBuilder._regex, s):
-            lines.append(LineBuilder(offset + m.start(), m.group("actor"), m.group("expr"), m.group("block"), m.group("line")))
+            lines.append(LineBuilder(offset + m.start(), m.group("actor"), m.group("line")))
 
         return lines
 
@@ -85,17 +91,16 @@ class LineBuilder(CommandBuilder):
     def format(s):
         s = re.sub("--", u"\u2014", s) # em dash
         s = re.sub("'", u"\u2019", s) # apostrophe to single quote (asthetic)
-        s = re.sub("\.\.\.", u"\u2026", s) # ellipsis
+        s = re.sub(r"\.\.\.", u"\u2026", s) # ellipsis
         s = re.sub(f"\"", "\\\"", s) # quotes within line
         s = LineBuilder._italics.sub(r'{i}\g<1>{/i}', s) #italics
+        s = LineBuilder._parens.sub(r'{size=18}{i}\g<1>{/i}{/size} ', s) #put these comments into italics and shrink
         s = s.strip()
         return s
 
-    def __init__(self, cindex, actor, expr, block, line):
+    def __init__(self, cindex, actor, line):
         super().__init__(cindex)
         self.actor = actor
-        self.expr = expr
-        self.block = block
         self.line = line
 
     def __str__(self):
@@ -103,15 +108,90 @@ class LineBuilder(CommandBuilder):
         for index, l in enumerate(self.line.splitlines()):
             l = LineBuilder.format(l)
 
-            match l:
-                case '\\beat':
-                    continue
-                case '\\pause':
-                    continue
-
             if index == 0:
                 output = F"    {self.actor} \"{l}\""
             else:
                 output = output + F"\n    extend \" {l}\""
 
         return output
+    
+class NarrationBuilder(CommandBuilder):
+    _narration = re.compile(r'\\narr\{(?P<narration>[^\}]+)\}')
+
+    @staticmethod
+    def extract(s, offset=0):
+        narrations = []
+
+        for m in re.finditer(NarrationBuilder._narration,s):
+            narrations.append(NarrationBuilder(offset + m.start(), m.group("narration"), "FFF"))
+
+        return narrations
+
+    def __init__(self, cindex, narration, colorHex):
+        super().__init__(cindex)
+        self.narration = narration
+        self.colorHex = colorHex
+
+    def __str__(self):
+        return F"    \"{self.narration}\""
+    
+    
+class BeatBuilder(CommandBuilder):
+    _narration = re.compile(r'\\beat')
+
+    @staticmethod
+    def extract(s, offset=0):
+        narrations = []
+
+        for m in re.finditer(BeatBuilder._narration,s):
+            narrations.append(BeatBuilder(offset + m.start()))
+
+        return narrations
+
+    def __init__(self, cindex):
+        super().__init__(cindex)
+
+    def __str__(self):
+        return F"    pause 2"
+
+    
+class SoundBuilder(CommandBuilder):
+    #I only care about the file, in 2nd argument
+    _narration = re.compile(r'\\sound\{[^\}]+\}\{(?P<sfx>[^\}]+)\}')
+
+    @staticmethod
+    def extract(s, offset=0):
+        narrations = []
+
+        for m in re.finditer(SoundBuilder._narration,s):
+            narrations.append(SoundBuilder(offset + m.start(), m.group("sfx")))
+
+        return narrations
+
+    def __init__(self, cindex, sfx):
+        super().__init__(cindex)
+        self.sfx = sfx
+
+    def __str__(self):
+        return F"    play sound {self.sfx}"
+
+class BgBuilder(CommandBuilder):
+    #I only care about the file, in 2nd argument
+    _bg = re.compile(r'\\(ex|in)tslug\[\\(?P<time>\w+)\/\]\{\\(?P<bg>\w+)\/\}')
+
+    @staticmethod
+    def extract(s, offset=0):
+        extractions = []
+
+        for m in re.finditer(BgBuilder._bg,s):
+            extractions.append(BgBuilder(offset + m.start(), m.group("time"), m.group("bg")))
+
+        return extractions
+
+    def __init__(self, cindex, time, bg):
+        super().__init__(cindex)
+        self.time = time
+        self.bg = bg
+
+    def __str__(self):
+        return F"    show bg_{self.bg}_{self.time}\n    with dissolve"
