@@ -11,6 +11,7 @@ class DigiplayBuilder():
         self.command_builders.extend(BeatBuilder.extract(s))
         self.command_builders.extend(SoundBuilder.extract(s))
         self.command_builders.extend(BgBuilder.extract(s))
+        self.command_builders.extend(CodeBuilder.extract(s))
 
     def format(self, s):
         # very obvious optimization. If there is no \, there is nothing
@@ -137,7 +138,8 @@ class NarrationBuilder(CommandBuilder):
     
     
 class BeatBuilder(CommandBuilder):
-    _narration = re.compile(r'\\beat')
+    # only consider beats on newlines, and not in the middle of someone speaking...
+    _narration = re.compile(r'\n\\beat')
 
     @staticmethod
     def extract(s, offset=0):
@@ -176,22 +178,43 @@ class SoundBuilder(CommandBuilder):
         return F"    play sound {self.sfx}"
 
 class BgBuilder(CommandBuilder):
-    #I only care about the file, in 2nd argument
-    _bg = re.compile(r'\\(ex|in)tslug\[\\(?P<time>\w+)\/\]\{\\(?P<bg>\w+)\/\}')
+    _bg = re.compile(r'\\(ex|in)tslug\[\\(?P<time>\w+)\/\]\{\\(?P<bg>\w+)\/\}(\s*%\s*(?P<trans>\w+))?')
 
     @staticmethod
     def extract(s, offset=0):
         extractions = []
 
         for m in re.finditer(BgBuilder._bg,s):
-            extractions.append(BgBuilder(offset + m.start(), m.group("time"), m.group("bg")))
+            extractions.append(BgBuilder(offset + m.start(), m.group("time"), m.group("bg"), m.group("trans")))
 
         return extractions
 
-    def __init__(self, cindex, time, bg):
+    def __init__(self, cindex, time, bg, trans):
         super().__init__(cindex)
         self.time = time
         self.bg = bg
+        self.trans = "dissolve" if trans is None else trans
 
     def __str__(self):
-        return F"    show bg_{self.bg}_{self.time}\n    with dissolve"
+        return F"    scene bg_{self.bg}_{self.time}\n    with {self.trans}"
+
+
+    
+class CodeBuilder(CommandBuilder):
+    _narration = re.compile(r'%C\s*(?P<code>[^\n]+)')
+
+    @staticmethod
+    def extract(s, offset=0):
+        extractions = []
+
+        for m in re.finditer(CodeBuilder._narration,s):
+            extractions.append(CodeBuilder(offset + m.start(), m.group("code")))
+
+        return extractions
+
+    def __init__(self, cindex, code):
+        super().__init__(cindex)
+        self.code = code
+
+    def __str__(self):
+        return F"    {self.code}"
