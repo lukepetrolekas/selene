@@ -1,4 +1,5 @@
 import re
+import uuid
 
 class DigiplayBuilder():
     _shorthand = re.compile(r'\\(\w+)/')
@@ -12,6 +13,20 @@ class DigiplayBuilder():
         self.command_builders.extend(SoundBuilder.extract(s))
         self.command_builders.extend(BgBuilder.extract(s))
         self.command_builders.extend(CodeBuilder.extract(s))
+
+        # sort by real seq
+        self.command_builders = sorted(self.command_builders, key= lambda b: b.cindex)
+
+        # review builder sequences:
+        # if a sound is right after another sound, it needs to be 'queued' otherwise
+        # the first will be skipped
+
+        prev = self.command_builders[0]
+        for cb in self.command_builders:
+            if cb.uuid != prev.uuid and type(prev) is SoundBuilder and type(cb) is SoundBuilder:
+                cb.verb = "queue"
+
+            prev = cb
 
     def format(self, s):
         # very obvious optimization. If there is no \, there is nothing
@@ -34,6 +49,7 @@ class DigiplayBuilder():
 class CommandBuilder():
     def __init__(self, cindex):
         self.cindex = cindex
+        self.uuid = uuid.uuid4()
 
 class CodeBuilder(CommandBuilder):
     def __init__(self, cindex, cmd):
@@ -159,13 +175,13 @@ class BeatBuilder(CommandBuilder):
     
 class SoundBuilder(CommandBuilder):
     #I only care about the file, in 2nd argument
-    _narration = re.compile(r'\\sound\{[^\}]+\}\{(?P<sfx>[^\}]+)\}')
+    _extraction = re.compile(r'\\sound\{[^\}]+\}\{(?P<sfx>[^\}]+)\}')
 
     @staticmethod
     def extract(s, offset=0):
         narrations = []
 
-        for m in re.finditer(SoundBuilder._narration,s):
+        for m in re.finditer(SoundBuilder._extraction,s):
             narrations.append(SoundBuilder(offset + m.start(), m.group("sfx")))
 
         return narrations
@@ -173,9 +189,10 @@ class SoundBuilder(CommandBuilder):
     def __init__(self, cindex, sfx):
         super().__init__(cindex)
         self.sfx = sfx
+        self.verb = "play"
 
     def __str__(self):
-        return F"    play sound {self.sfx}"
+        return F"    {self.verb} sound {self.sfx}"
 
 class BgBuilder(CommandBuilder):
     _bg = re.compile(r'\\(ex|in)tslug\[\\(?P<time>\w+)\/\]\{\\(?P<bg>\w+)\/\}(\s*%\s*(?P<trans>\w+))?')
